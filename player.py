@@ -8,10 +8,19 @@ import struct
 import time
 import sys
 
+def max_card(hand):
+    max_value=0;
+    for(card in hand):
+        if(max_size < card):
+            max_size = value
+        
+
 def sample_bot(host, port):
     s = SocketLayer(host, port)
 
     gameId = None
+
+    hand
 
     while True:
         msg = s.pump()
@@ -24,7 +33,9 @@ def sample_bot(host, port):
                 print("New game started: " + str(gameId))
 
             if msg["request"] == "request_card":
-                cardToPlay = msg["state"]["hand"][0]
+                hand = msg["state"]["hand"]
+                cardToPlay = max_card(hand)
+                # cardToPlay = msg["state"]["hand"][0]
                 s.send({"type": "move", "request_id": msg["request_id"],
                     "response": {"type": "play_card", "card": cardToPlay}})
             elif msg["request"] == "challenge_offered":
