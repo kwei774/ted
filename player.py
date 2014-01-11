@@ -8,21 +8,7 @@ import struct
 import time
 import sys
 
-''' statistics code
-
-#takes in arrray up to 13 only uses 1 through 13 as values for cards that have been seen
-def updatestats(showncards, hand):
-    for card in hand:
-        showncards[card] =  showncards[card] + 1
-        
-#call when a card is shown on the table
-
-def updatestats_tablecard(showncards, tablecard):
-    showncards[tablecard] = showncards[tablecard] + 1
-    
-''' 
-
-
+#Returns maximum card in your hand
 def max_card(hand):
     max_value = 0
     for card in hand:
@@ -30,6 +16,7 @@ def max_card(hand):
             max_value = card
     return max_value        
 
+#Returns minimum card in your hand
 def min_card(hand):
     min_value = 13
     for card in hand:
@@ -37,16 +24,18 @@ def min_card(hand):
             min_value = card
     return min_value
 
+#Returns average value of hand
 def hand_avg(hand):
     total = 0
     for card in hand:
         total = total + card
     return total / len(hand)
     
-    
+#Tests hand value against a desired average
 def desHandAvg(hand, avg):
     return hand_avg(hand) >= avg   
-    
+
+#Averages top topNum cards in hand
 def hand_avg_top(hand, topNum):
     temp_hand = []
     for card in hand:
@@ -60,9 +49,11 @@ def hand_avg_top(hand, topNum):
         
     return hand_avg(max_hand)
 
+#Tests average of top topNum cards
 def desHandAvgMax(hand, avg, topNum):
     return hand_avg_top(hand, topNum) >= avg
 
+#Finds minimum card to beat or tie the other player's card
 def min_beat(hand, cardPlayed):
     min_beat = 13
     canBeat = False
@@ -81,12 +72,23 @@ def min_beat(hand, cardPlayed):
                 min_beat = card
     return min_beat
 
+
+#FIX S FIX S FIX S MAKE IT IN SCOPE
+#Function that handles when the other person goes first
 def otherFirst(msg, hand, minCard, maxCard):
     cardPlayed = msg["state"]["card"]
     cardToPlay = 0
     print("Other player's card " + str(cardPlayed))
 
-    if ((cardPlayed > maxCard) or (cardPlayed < minCard)):
+    if (msg["state"]["total_tricks"] == 0):
+        if (desHandAvgMax(hand, 11, 3) and msg["state"]["can_challenge"]):
+            s.send({"type": "move", "request_id": msg["request_id"], "response": {"type": "offer_challenge"}})
+    elif (msg["state"]["total_tricks"] == 1):
+        if (desHandAvgMax(hand, 11, 2) and msg["state"]["can_challenge"]):
+            s.send({"type": "move", "request_id": msg["request_id"], "response": {"type": "offer_challenge"}})
+    elif (msg["state"]["your_tricks"] > 3 and msg["state"]["can_challenge"]):
+        s.send({"type": "move", "request_id": msg["request_id"], "response": {"type": "offer_challenge"}})         
+    elif ((cardPlayed > maxCard) or (cardPlayed < minCard)):
         cardToPlay = minCard
     elif (cardPlayed == maxCard):
         cardToPlay = maxCard
@@ -95,14 +97,40 @@ def otherFirst(msg, hand, minCard, maxCard):
         
     return cardToPlay
 
+'''
+leads with the lowest card of 6,7, or 8 (if exists)
+otherwise returns min_card(hand)
+'''
+def chooseLead(hand):
+    return min_card(hand)
+'''
+    lead = 0;
+    for card in hand:
+        if(card == 6):
+            return card
+        elif(card == 7):
+            lead = card
+        elif(card == 8 and lead != 7):
+            lead = card
+    if(lead == 0):
+        return min_card(hand)
+    else:
+        return lead 
+'''
+        
+
 def sample_bot(host, port):
     s = SocketLayer(host, port)
 
     #variable declarations
     gameId = None
     hand = [0, 0, 0, 0, 0]
+    game_number = 0
     
     while True:
+        #games = 0
+        #hands = 0
+        #avghands = 0
         msg = s.pump()
         if msg["type"] == "error":
             print("The server doesn't know your IP. It saw: " + msg["seen_host"])
@@ -133,6 +161,7 @@ def sample_bot(host, port):
                 print ("Your tricks " + str(msg["state"]["your_tricks"]))
                 print ("Their tricks " + str(msg["state"]["their_tricks"]))
                 # 000000000000000000000
+                #hands = hands + 1
                 if (msg["state"]["total_tricks"] == 0):
 
                     # Other player plays first
@@ -142,16 +171,13 @@ def sample_bot(host, port):
                     # You play first
                     else:
                         #challenge if average of top 3 cards is past threshhold
-                        if( desHandAvgMax(hand, 11.5, 3) and msg["state"]["can_challenge"]):
+                        if( desHandAvgMax(hand, 11, 3) and msg["state"]["can_challenge"]):
                             s.send({"type": "move", "request_id": msg["request_id"],
                                     "response": {"type": "offer_challenge"}})
                             print("Challenge issued")
 
                         else:
-                            if(max_card(hand) < 9):
-                                cardToPlay = minCard
-                            else:
-                                cardToPlay = maxCard
+                            cardToPlay = chooseLead(hand)
                 
                 # 11111111111111111111
                 elif (msg["state"]["total_tricks"] == 1):
@@ -163,15 +189,12 @@ def sample_bot(host, port):
                     # You play first
                     else:
                         #challenge if average of top 3 cards is past threshhold
-                        if( desHandAvgMax(hand, 11.5, 2) and msg["state"]["can_challenge"]):
+                        if( desHandAvgMax(hand, 11, 2) and msg["state"]["can_challenge"]):
                             s.send({"type": "move", "request_id": msg["request_id"],
                                     "response": {"type": "offer_challenge"}})
                             print("Challenge issued")
                         else:
-                            if(max_card(hand) < 9):
-                                cardToPlay = minCard
-                            else:
-                                cardToPlay = maxCard
+                            cardToPlay = chooseLead(hand)
 
                 # 22222222222222222222
                 elif (msg["state"]["total_tricks"] == 2):
@@ -188,10 +211,7 @@ def sample_bot(host, port):
                                     "response": {"type": "offer_challenge"}})
                             print("Challenge issued")
                         else:
-                            if(max_card(hand) < 9):
-                                cardToPlay = minCard
-                            else:
-                                cardToPlay = maxCard
+                            cardToPlay = chooseLead(hand)
 
                 # 33333333333333333333
                 elif (msg["state"]["total_tricks"] == 3):
@@ -208,10 +228,7 @@ def sample_bot(host, port):
                                     "response": {"type": "offer_challenge"}})
                             print("Challenge issued")
                         else:
-                            if(max_card(hand) < 9):
-                                cardToPlay = minCard
-                            else:
-                                cardToPlay = maxCard
+                            cardToPlay = chooseLead(hand)
                 
                 # 44444444444444444444
                 else:
@@ -228,12 +245,9 @@ def sample_bot(host, port):
                                     "response": {"type": "offer_challenge"}})
                             print("Challenge issued")
                         else:
-                            if(max_card(hand) < 9):
-                                cardToPlay = minCard
-                            else:
-                                cardToPlay = maxCard
+                            cardToPlay = chooseLead(hand)
                 
-                #end of giant if/else
+                #end of giant if/else, send our response
                 s.send({"type": "move", "request_id": msg["request_id"],
                     "response": {"type": "play_card", "card": cardToPlay}})
                     
@@ -244,7 +258,7 @@ def sample_bot(host, port):
                     s.send({"type": "move", "request_id": msg["request_id"],
                             "response": {"type": "reject_challenge"}})
                 #if our average is favorable accept
-                if(desHandAvg(hand, 9)):
+                if(desHandAvg(hand, 10) or (msg["state"]["their_points"] > (msg["state"]["your_points"] + 5))):
                     s.send({"type": "move", "request_id": msg["request_id"],
                             "response": {"type": "accept_challenge"}})
                 else:
@@ -255,7 +269,14 @@ def sample_bot(host, port):
         elif msg["type"] == "greetings_program":
             print("Connected to the server.")
         elif msg["type"] == "game_won":
+            #games = games + 1
+            #avghands = hands /games
+            #if msg["state"][in_challenge] and (msg["by"] == 
+                
             print("Game Over: "+msg["by"]+" won")
+        #if games%300 == 0:
+            #print("The Average Hands per game is: " + avghands)
+            #print()
 
 
 
@@ -301,4 +322,4 @@ class SocketLayer:
         self.s.send(data)
 
 if __name__ == "__main__":
-    loop(sample_bot, "cuda.contest", 19999)
+    loop(sample_bot, "cuda.contest", 9999)
