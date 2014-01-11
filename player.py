@@ -8,6 +8,8 @@ import struct
 import time
 import sys
 
+''' statistics code
+
 #takes in arrray up to 13 only uses 1 through 13 as values for cards that have been seen
 def updatestats(showncards, hand):
     for card in hand:
@@ -18,6 +20,9 @@ def updatestats(showncards, hand):
 def updatestats_tablecard(showncards, tablecard):
     showncards[tablecard] = showncards[tablecard] + 1
     
+''' 
+
+
 def max_card(hand):
     max_value = 0
     for card in hand:
@@ -40,19 +45,55 @@ def hand_avg(hand):
     
     
 def desHandAvg(hand, avg):
-    return hand_avg(hand) >= avg    
+    return hand_avg(hand) >= avg   
+    
+def hand_avg_top(hand, topNum):
+    temp_hand = []
+    for card in hand:
+        temp_hand.append(card)
+        
+    max_hand = []
+    for i in range(0, topNum):
+        maxNum = max_card(temp_hand)
+        max_hand.append(maxNum)
+        temp_hand.remove(maxNum)
+        
+    return hand_avg(max_hand)
 
-'''
-min_beat assumes that our hand contains a card 
-greater than cardPlayed
-'''
+def desHandAvgMax(hand, avg, topNum):
+    return hand_avg_top(hand, topNum) >= avg
+
 def min_beat(hand, cardPlayed):
     min_beat = 13
+    canBeat = False
     for card in hand:
         if(card > cardPlayed):
-            if(card < min_beat):
+            canBeat = True
+            break
+    if(canBeat):    
+        for card in hand:
+            if(card > cardPlayed):
+                if(card < min_beat):
+                    min_beat = card
+    else:
+        for card in hand:
+            if(card == cardPlayed):
                 min_beat = card
     return min_beat
+
+def otherFirst(msg, hand, minCard, maxCard):
+    cardPlayed = msg["state"]["card"]
+    cardToPlay = 0
+    print("Other player's card " + str(cardPlayed))
+
+    if ((cardPlayed > maxCard) or (cardPlayed < minCard)):
+        cardToPlay = minCard
+    elif (cardPlayed == maxCard):
+        cardToPlay = maxCard
+    else:
+        cardToPlay = min_beat(hand, cardPlayed)
+        
+    return cardToPlay
 
 def sample_bot(host, port):
     s = SocketLayer(host, port)
@@ -83,77 +124,61 @@ def sample_bot(host, port):
             if msg["request"] == "request_card":
                 hand = msg["state"]["hand"]
                 cardPlayed = 0
+                cardToPlay = 0
                 maxCard = max_card(hand)
                 minCard = min_card(hand)
                 
-                # Begin 
+                
+                print hand
+                print ("Your tricks " + str(msg["state"]["your_tricks"]))
+                print ("Their tricks " + str(msg["state"]["their_tricks"]))
                 # 000000000000000000000
                 if (msg["state"]["total_tricks"] == 0):
 
                     # Other player plays first
                     if ("card" in msg["state"]):
-                        cardPlayed = msg["state"]["card"]
-                        print("Other player's card " + str(cardPlayed))
-
-                        if ((cardPlayed > maxCard) or (cardPlayed < minCard)):
-                            cardToPlay = minCard
-                        elif (cardPlayed == maxCard):
-                            cardToPlay = maxCard
-                        else:
-                            cardToPlay = min_beat(hand, cardPlayed)
+                        cardToPlay = otherFirst(msg, hand, minCard, maxCard)
 
                     # You play first
                     else:
                         #challenge if average of top 3 cards is past threshhold
-                        # if(msg["state"]["your_tricks"] == 3 and msg["state"]["can_challenge"]):
+                        if( desHandAvgMax(hand, 11.5, 3) and msg["state"]["can_challenge"]):
                             s.send({"type": "move", "request_id": msg["request_id"],
                                     "response": {"type": "offer_challenge"}})
-                            break
-                        else:
-                            cardToPlay = minCard
-                # 000000000000000000000
-                #end
+                            print("Challenge issued")
 
+                        else:
+                            if(max_card(hand) < 9):
+                                cardToPlay = minCard
+                            else:
+                                cardToPlay = maxCard
                 
-                # Begin 
                 # 11111111111111111111
                 elif (msg["state"]["total_tricks"] == 1):
 
                     # Other player plays first
                     if ("card" in msg["state"]):
-                        cardPlayed = msg["state"]["card"]
-                        print("Other player's card " + str(cardPlayed))
-
-                        if ((cardPlayed > maxCard) or (cardPlayed < minCard)):
-                            cardToPlay = minCard
-                        elif (cardPlayed == maxCard):
-                            cardToPlay = maxCard
-                        else:
-                            cardToPlay = min_beat(hand, cardPlayed)
+                        cardToPlay = otherFirst(msg, hand, minCard, maxCard)
 
                     # You play first
                     else:
                         #challenge if average of top 3 cards is past threshhold
-                        if(msg["state"]["your_tricks"] == 3 and msg["state"]["can_challenge"]):
+                        if( desHandAvgMax(hand, 11.5, 2) and msg["state"]["can_challenge"]):
                             s.send({"type": "move", "request_id": msg["request_id"],
                                     "response": {"type": "offer_challenge"}})
-                            break
+                            print("Challenge issued")
                         else:
-                            cardToPlay = minCard
+                            if(max_card(hand) < 9):
+                                cardToPlay = minCard
+                            else:
+                                cardToPlay = maxCard
 
+                # 22222222222222222222
                 elif (msg["state"]["total_tricks"] == 2):
 
                     # Other player plays first
                     if ("card" in msg["state"]):
-                        cardPlayed = msg["state"]["card"]
-                        print("Other player's card " + str(cardPlayed))
-
-                        if ((cardPlayed > maxCard) or (cardPlayed < minCard)):
-                            cardToPlay = minCard
-                        elif (cardPlayed == maxCard):
-                            cardToPlay = maxCard
-                        else:
-                            cardToPlay = min_beat(hand, cardPlayed)
+                        cardToPlay = otherFirst(msg, hand, minCard, maxCard)
 
                     # You play first
                     else:
@@ -161,23 +186,19 @@ def sample_bot(host, port):
                         if(msg["state"]["your_tricks"] == 3 and msg["state"]["can_challenge"]):
                             s.send({"type": "move", "request_id": msg["request_id"],
                                     "response": {"type": "offer_challenge"}})
-                            break
+                            print("Challenge issued")
                         else:
-                            cardToPlay = minCard
+                            if(max_card(hand) < 9):
+                                cardToPlay = minCard
+                            else:
+                                cardToPlay = maxCard
 
+                # 33333333333333333333
                 elif (msg["state"]["total_tricks"] == 3):
 
                     # Other player plays first
                     if ("card" in msg["state"]):
-                        cardPlayed = msg["state"]["card"]
-                        print("Other player's card " + str(cardPlayed))
-
-                        if ((cardPlayed > maxCard) or (cardPlayed < minCard)):
-                            cardToPlay = minCard
-                        elif (cardPlayed == maxCard):
-                            cardToPlay = maxCard
-                        else:
-                            cardToPlay = min_beat(hand, cardPlayed)
+                        cardToPlay = otherFirst(msg, hand, minCard, maxCard)
 
                     # You play first
                     else:
@@ -185,22 +206,19 @@ def sample_bot(host, port):
                         if(msg["state"]["your_tricks"] == 3 and msg["state"]["can_challenge"]):
                             s.send({"type": "move", "request_id": msg["request_id"],
                                     "response": {"type": "offer_challenge"}})
-                            break
+                            print("Challenge issued")
                         else:
-                            cardToPlay = minCard
+                            if(max_card(hand) < 9):
+                                cardToPlay = minCard
+                            else:
+                                cardToPlay = maxCard
+                
+                # 44444444444444444444
                 else:
 
                     # Other player plays first
                     if ("card" in msg["state"]):
-                        cardPlayed = msg["state"]["card"]
-                        print("Other player's card " + str(cardPlayed))
-
-                        if ((cardPlayed > maxCard) or (cardPlayed < minCard)):
-                            cardToPlay = minCard
-                        elif (cardPlayed == maxCard):
-                            cardToPlay = maxCard
-                        else:
-                            cardToPlay = min_beat(hand, cardPlayed)
+                        cardToPlay = otherFirst(msg, hand, minCard, maxCard)
 
                     # You play first
                     else:
@@ -208,49 +226,40 @@ def sample_bot(host, port):
                         if(msg["state"]["your_tricks"] == 3 and msg["state"]["can_challenge"]):
                             s.send({"type": "move", "request_id": msg["request_id"],
                                     "response": {"type": "offer_challenge"}})
-                            break
+                            print("Challenge issued")
                         else:
-                            cardToPlay = minCard
-
+                            if(max_card(hand) < 9):
+                                cardToPlay = minCard
+                            else:
+                                cardToPlay = maxCard
                 
-                # if ("card" in msg["state"]):
-                #     cardPlayed = msg["state"]["card"]
-                #     print("Other player's card " + str(cardPlayed))
-                    
-                # #always challenge if three tricks won
-                # if(msg["state"]["your_tricks"] == 3 and msg["state"]["can_challenge"]):
-                #     s.send({"type": "move", "request_id": msg["request_id"],
-                #             "response": {"type": "offer_challenge"}})
-                #     break
-                    
-                
-                # #basic card algorithm    
-                # if ((cardPlayed > maxCard) or (cardPlayed < minCard)):
-                #     cardToPlay = minCard
-                # elif (cardPlayed == maxCard):
-                #     cardToPlay = maxCard
-                # else:
-                #     cardToPlay = min_beat(hand, cardPlayed)
-                
-                
-                print hand
+                #end of giant if/else
                 s.send({"type": "move", "request_id": msg["request_id"],
                     "response": {"type": "play_card", "card": cardToPlay}})
                     
-            #opponent challenge handling
+            #they challenge
             elif msg["request"] == "challenge_offered":
+                #if they have >= three tricks don't accept
+                if(msg["state"]["their_tricks"] >= 3):
+                    s.send({"type": "move", "request_id": msg["request_id"],
+                            "response": {"type": "reject_challenge"}})
+                #if our average is favorable accept
                 if(desHandAvg(hand, 9)):
                     s.send({"type": "move", "request_id": msg["request_id"],
                             "response": {"type": "accept_challenge"}})
                 else:
                     s.send({"type": "move", "request_id": msg["request_id"],
                             "response": {"type": "reject_challenge"}})
-                            
+        
+        #misc stuff                  
         elif msg["type"] == "greetings_program":
             print("Connected to the server.")
         elif msg["type"] == "game_won":
             print("Game Over: "+msg["by"]+" won")
 
+
+
+#***end of our code*** 
 def loop(player, *args):
     while True:
         try:
