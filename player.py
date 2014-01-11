@@ -85,4 +85,4 @@ class SocketLayer:
         self.s.send(data)
 
 if __name__ == "__main__":
-    loop(sample_bot, "cuda.contest", 9999)
+    loop(sample_bot, "cuda.contest", 19999)
