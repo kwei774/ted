@@ -9,19 +9,17 @@ import time
 import sys
 
 def max_card(hand):
-    max_value=0;
-    for(card in hand):
-        if(max_size < card):
-            max_size = value
-        
+    max_value=0
+    for card in hand:
+        if(max_value < card):
+            max_value = card
+    return max_value        
 
 def sample_bot(host, port):
     s = SocketLayer(host, port)
 
     gameId = None
-
-    hand
-
+    hand = [0, 0, 0, 0, 0]
     while True:
         msg = s.pump()
         if msg["type"] == "error":
@@ -36,6 +34,7 @@ def sample_bot(host, port):
                 hand = msg["state"]["hand"]
                 cardToPlay = max_card(hand)
                 # cardToPlay = msg["state"]["hand"][0]
+                print hand
                 s.send({"type": "move", "request_id": msg["request_id"],
                     "response": {"type": "play_card", "card": cardToPlay}})
             elif msg["request"] == "challenge_offered":
@@ -43,6 +42,8 @@ def sample_bot(host, port):
                         "response": {"type": "reject_challenge"}})
         elif msg["type"] == "greetings_program":
             print("Connected to the server.")
+        elif msg["type"] == "game_won":
+            print("Game Over: "+msg["by"]+" won")
 
 def loop(player, *args):
     while True:
@@ -85,4 +86,4 @@ class SocketLayer:
         self.s.send(data)
 
 if __name__ == "__main__":
-    loop(sample_bot, "cuda.contest", 19999)
+    loop(sample_bot, "cuda.contest", 9999)
