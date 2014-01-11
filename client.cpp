@@ -27,6 +27,7 @@ void client::server_greeting(greeting* greet) {
 
 void client::game_over(game_result* r) {
     // left blank for you
+	// ted
 }
 
 void client::trick_done(move_result* r) {
